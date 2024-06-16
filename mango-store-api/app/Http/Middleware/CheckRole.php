@@ -5,11 +5,16 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CheckRole
 {
     public function handle(Request $request, Closure $next, $role)
     {
+        Auth::shouldUse('api');
+        if ($request->hasHeader('Authorization')) {
+            $authHeader = $request->header('Authorization');
+        }
         if (Auth::check()) {
             $user = Auth::user();
             $roles = explode('|', strtolower($role)); // Convert roles to lowercase

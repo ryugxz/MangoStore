@@ -4,6 +4,7 @@
   use App\Http\Controllers\Controller;
   use App\Models\User;
   use App\Models\UserProfile;
+  use App\Models\VendorDetail;
   use Illuminate\Http\Request;
   use Illuminate\Support\Facades\Auth;
   use Illuminate\Support\Facades\Validator;
@@ -20,13 +21,16 @@
       {
           $validator = Validator::make($request->all(), [
               'username' => 'required|unique:users,username',
-              'password' => 'required|min:8',
-              'firstname' => 'required|unique:userprofile,firstname',
-              'lastname' => 'required|unique:userprofile,lastname',
+              'password' => 'required',
+              'firstname' => 'required',
+              'lastname' => 'required',
               'role' => 'required',
-              'email' => 'required|email|unique:userprofile,email',
+              'email' => 'required|email',
               'address' => 'required',
-              'phone' => 'required'
+              'phone' => 'required',
+              'store_name' => 'nullable|string',
+              'bank_name' => 'nullable|string',
+              'promptpay_number' => 'nullable|string'
           ]);
       
           if ($validator->fails()) {
@@ -56,6 +60,17 @@
                   'address' => $request->address,
                   'phone' => $request->phone
               ]);
+
+              //Check vendor information
+              if (!is_null($request->bank_name) && !is_null($request->promptpay_number) && strtolower($request->role) === 'vendor') 
+              {
+                VendorDetail::create([
+                    'user_id' => $user->id,
+                    'store_name' => $request->store_name,
+                    'bank_name' => $request->bank_name,
+                    'promptpay_number' => $request->promptpay_number
+                ]);
+              }
       
               // Attempt to generate a token for the registered user
               $token = auth()->attempt([
@@ -142,15 +157,22 @@
        */
       protected function respondWithToken($token)
       {
-          $cookie = cookie('jwt', $token, 60); // สร้าง cookie ชื่อ 'jwt' ที่หมดอายุใน 60 นาที
-  
+          // Retrieve the authenticated user with their profile loaded
+          $user = auth()->user(); // Define the user variable by retrieving the authenticated user
+          $user->load('userProfile'); // Eager load the user profile
+      
+          // Create a cookie named 'jwt' that expires in 720 minutes
+          $cookie = cookie('jwt', $token, 720);
+      
           return response()->json([
               'access_token' => $token,
               'token_type' => 'bearer',
-              'expires_in' => auth()->factory()->getTTL() * 60,
-              'user' => auth()->user() // เพิ่มข้อมูลผู้ใช้ในการตอบกลับ
-          ])->cookie($cookie); // แนบ cookie ไปกับการตอบกลับ
+              'expires_in' => auth()->factory()->getTTL() * 60, // TTL in seconds
+              'user' => $user, // Include user information in the response
+              'user_profile' => $user->userProfile // Include user profile information in the response
+          ])->cookie($cookie); // Attach the cookie with the response
       }
+      
 
       /**
      * Delete a User.

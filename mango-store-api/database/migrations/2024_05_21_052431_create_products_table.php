@@ -17,6 +17,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2)->nullable();
             $table->foreignId('vendor_id')->nullable()->constrained('users');
+            $table->integer('stock')->default(0); // Quantity of products in stock
+            $table->boolean('is_available')->default(true); // Flag to indicate if the product is available for sale
             $table->timestamps();
         });
         

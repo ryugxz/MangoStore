@@ -15,7 +15,9 @@ class Product extends Model
         'name', 
         'description', 
         'price', 
-        'vendor_id'
+        'vendor_id',
+        'stock',
+        'is_available'
     ];
 
     // Define relationships
@@ -23,12 +25,13 @@ class Product extends Model
         return $this->belongsTo(User::class, 'vendor_id');
     }
 
-    // If you have product images or categories associated
+    // If you have product images associated
     public function images() {
         return $this->hasMany(ProductImage::class);
     }
-
-    public function categories() {
-        return $this->belongsToMany(ProductCategory::class);
+    public function promotion() {
+        return $this->hasOne(Promotion::class);
     }
+    
+    
 }

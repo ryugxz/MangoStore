@@ -12,6 +12,7 @@ class VendorDetail extends Model
     protected $table = 'vendordetails';
 
     protected $fillable = [
+        'store_name',
         'user_id', 
         'bank_name', 
         'promptpay_number', 

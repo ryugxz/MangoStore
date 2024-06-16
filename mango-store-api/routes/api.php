@@ -23,3 +23,25 @@ Route::group([
     Route::post('/me', [AuthController::class, 'me'])->middleware(['jwt.cookie'])->name('me');
     Route::delete('/user/{id}', [AuthController::class, 'deleteUser'])->middleware(['jwt.cookie', 'role:Admin'])->name('deleteUser');
 });
+
+
+// Product Routes
+Route::group([
+    'middleware' => 'api',
+    'prefix' => 'products'
+], function () {
+    Route::get('/', [ProductController::class, 'index']); // List all products
+    Route::get('/search', [ProductController::class, 'search'])->name('products.search');
+    Route::post('/', [ProductController::class, 'store'])
+        ->middleware(['jwt.cookie', 'role:vendor|admin'])
+        ->name('products.store'); // Create a new product
+    Route::put('/{product}', [ProductController::class, 'update'])
+        ->middleware(['jwt.cookie', 'role:vendor|admin'])
+        ->name('products.update'); // Update a specific product
+    Route::delete('/{product}', [ProductController::class, 'destroy'])
+        ->middleware(['jwt.cookie', 'role:vendor|admin'])
+        ->name('products.destroy'); // Delete a specific product
+});
+
+
+
