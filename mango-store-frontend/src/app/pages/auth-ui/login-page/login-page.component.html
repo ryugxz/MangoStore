@@ -1,0 +1,39 @@
+<div class="progress-spinner" *ngIf="loading">
+  <p-progressSpinner 
+    styleClass="w-3rem h-3rem" 
+    strokeWidth="8" 
+    animationDuration=".5s" />
+</div>
+
+  <div class="login-sandbox mt-1">
+    <div class="inputField w-full p-3">
+      <p-floatLabel>
+        <input
+          pInputText
+          id="username"
+          [(ngModel)]="credentials.username"
+          autocomplete="new-password"
+          [style]="{ width: '100%' }"
+        />
+        <label for="username">ชื่อผู้ใช้</label>
+      </p-floatLabel>
+    </div>
+
+    <div class="inputField w-full p-3">
+      <p-floatLabel>
+        <p-password
+          [(ngModel)]="credentials.password"
+          [feedback]="false"
+          [toggleMask]="true"
+          autocomplete="new-password"
+          [style]="{ width: '100%' }"
+          [inputStyle]="{ width: '100%' }"
+        />
+        <label for="password">รหัสผ่าน</label>
+      </p-floatLabel>
+    </div>
+
+    <div class="p-3">
+      <p-button label="เข้าสู่ระบบ" (onClick)="login()" class="w-full" [style]="{ width: '100%' }"></p-button>
+    </div>
+  </div>

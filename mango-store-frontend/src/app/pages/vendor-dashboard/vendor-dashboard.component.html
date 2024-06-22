@@ -1,0 +1,197 @@
+<p-fieldset legend="Products" class="p-3">
+  <p-confirmDialog header="ยืนยันการลบสินค้า" icon="pi pi-exclamation-triangle" />
+  <div class="w-full flex justify-content-end">
+    <div>
+      <p-button icon="pi pi-cart-plus" class="white-space-nowrap mr-4" severity="success" label="เพิ่มสินค้า" (click)="showAddProductDialog()"></p-button>
+    </div>
+    <div>
+      <p-button icon="pi pi-star" class="white-space-nowrap mr-4" severity="help" label="จัดโปรโมชั่น" (click)="showPromotionDialog()"></p-button>
+    </div>
+  </div>
+  <p-divider />
+  <p-dataView [value]="paginatedProducts">
+    <ng-template pTemplate="list" let-product>
+      <div class="grid grid-nogutter">
+        <div class="col-12" *ngFor="let item of paginatedProducts; let first = first" class="col-12">
+          <div class="flex flex-column sm:flex-row sm:align-items-center p-4 gap-3" [ngClass]="{ 'border-top-1 surface-border': !first }">
+            <div class="md:w-10rem relative product-container">
+              <p-image 
+                   [src]="item.images && item.images[0]?.image_data || '../../assets/images/no-image.png'"
+                   [preview]="true"
+                   class="block mx-auto border-round w-full"
+                   alt="Image"
+                   width="150">
+                       <ng-template pTemplate="indicator">
+                           <i class="pi pi-check"></i>
+                       </ng-template>
+               </p-image>
+              <p-tag *ngIf="item.promotion" [value]="'Promotion: ' + item.promotion.discount_value + (item.promotion.discount_type === 'percentage' ? '%' : '$')"
+                     [severity]="getSeverity(item)" class="absolute" [style.left.px]="4" [style.top.px]="4"></p-tag>
+            </div>            
+            <div class="flex flex-column md:flex-row justify-content-between md:align-items-center flex-1 gap-4">
+              <div class="flex flex-row md:flex-column justify-content-between align-items-start gap-2">
+                <div>
+                  <div class="text-lg font-medium text-900 mt-2">{{ item.name }}</div>
+                  <div class="text-sm text-secondary mt-2">{{ item.description }}</div>
+                </div>
+                <div class="surface-100 p-1" style="border-radius: 30px">
+                  <div class="surface-0 flex align-items-center gap-2 justify-content-center py-1 px-2" style="border-radius: 30px; box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 1px 2px 0px rgba(0, 0, 0, 0.06)">
+                    <span class="text-900 font-medium text-sm">{{ item.promotion ? item.promotion.discount_value + (item.promotion.discount_type === 'percentage' ? '%' : '$') : '' }}</span>
+                    <i class="pi pi-star-fill text-yellow-500"></i>
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-column md:align-items-end gap-5">
+                <span class="text-xl font-semibold text-900">{{ item.price + ' บาท'}}</span>
+                <div class="flex flex-row gap-2">
+                  <p-button icon="pi pi-pencil" class="flex-auto md:flex-initial white-space-nowrap" label="แก้ไขข้อมูล" (onClick)="showEditProductDialog(item)"></p-button>
+                  <p-button icon="pi pi-trash" class="flex-auto md:flex-initial white-space-nowrap" severity="danger" label="ลบสินค้า" (onClick)="confirmToDelete(item.id)"></p-button>
+                </div>                             
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </p-dataView>
+  <p-divider />
+  <p-paginator 
+      (onPageChange)="onPageChange($event)" 
+      [first]="first"
+      [rows]="rows" 
+      [totalRecords]="products.length" 
+      [rowsPerPageOptions]="[5, 10, 15, 20]" />
+</p-fieldset>
+
+<p-dialog header="เพิ่มสินค้า" [(visible)]="displayAddProductDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeAddProductDialog()">
+  <form [formGroup]="addProductForm" (ngSubmit)="onAddProduct()" class="p-2">
+    <div class="p-fluid">
+      <div class="p-field">
+        <p-floatLabel>
+          <input pInputText formControlName="name" id="name" type="text" />
+          <label for="name">ชื่อสินค้า</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <textarea rows="5" cols="30" id="description" pInputTextarea formControlName="description"></textarea>
+          <label for="description">คำอธิบายสินค้า</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="price" formControlName="price" mode="decimal" prefix="฿" [minFractionDigits]="2" [maxFractionDigits]="2" locale="th-TH"></p-inputNumber>
+          <label for="price">ราคาสินค้า</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="stock" formControlName="stock" showButtons="true"></p-inputNumber>
+          <label for="stock">Stock</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <div>
+          <label for="is_available" class="text-xs	">การมองเห็นสินค้า</label>
+        </div>
+        <div class="pt-2">
+          <p-inputSwitch id="is_available" formControlName="is_available"></p-inputSwitch>
+        </div>
+      </div>
+      
+      <div class="p-field">
+        <p-fileUpload 
+            #fileUploadAdd
+            mode="basic" 
+            chooseLabel="รูปสินค้า" 
+            chooseIcon="pi pi-upload"
+            name="demo[]" 
+            url="https://www.primefaces.org/cdn/api/upload.php" 
+            accept="image/*" 
+            maxFileSize="2097152" 
+            (onSelect)="onFileChange($event)">
+        </p-fileUpload> 
+        <div *ngIf="imagePreview">
+          <img [src]="imagePreview" [alt]="'Preview'" style="width: 100px; height: auto; margin-top: 10px;">
+          <p-button label="ลบรูปภาพ" icon="pi pi-times" (click)="clearFileSelection('add')" severity="danger"></p-button>
+        </div>
+      </div>
+    </div>
+    <p-footer>
+      <div class="button-group">
+        <p-button label="เพิ่มสินค้า" icon="pi pi-check" type="submit" class="ui-button-primary p-1"></p-button>
+        <p-button label="ยกเลิก" icon="pi pi-times" (click)="displayAddProductDialog=false" class="ui-button-secondary p-3" severity="danger"></p-button>
+      </div>
+    </p-footer>    
+  </form>
+</p-dialog>
+
+
+<p-dialog header="แก้ไขข้อมูลสินค้า" [(visible)]="displayEditProductDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeEditProductDialog()">
+  <form [formGroup]="editProductForm" (ngSubmit)="onEditProduct()">
+    <div class="p-fluid">
+      <div class="p-field">
+        <p-floatLabel>
+          <input pInputText formControlName="name" id="editName" type="text" />
+          <label for="editName">ชื่อสินค้า</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <textarea rows="5" cols="30" id="editDescription" pInputTextarea formControlName="description"></textarea>
+          <label for="editDescription">คำอธิบายสินค้า</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="editPrice" formControlName="price" mode="decimal" prefix="฿" [minFractionDigits]="2" [maxFractionDigits]="2" locale="th-TH"></p-inputNumber>
+          <label for="editPrice">ราคาสินค้า</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="editStock" formControlName="stock" showButtons="true"></p-inputNumber>
+          <label for="editStock">Stock</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <div>
+          <label for="editIsAvailable" class="text-xs">การมองเห็นสินค้า</label>
+        </div>
+        <div class="pt-2">
+          <p-inputSwitch id="editIsAvailable" formControlName="is_available"></p-inputSwitch>
+        </div>
+      </div>
+      <div class="p-field">
+        <p-fileUpload 
+            #fileUploadEdit
+            mode="basic" 
+            chooseLabel="รูปสินค้า" 
+            chooseIcon="pi pi-upload"
+            name="demo[]" 
+            url="https://www.primefaces.org/cdn/api/upload.php" 
+            accept="image/*" 
+            maxFileSize="2097152" 
+            (onSelect)="onFileChange($event)">
+        </p-fileUpload> 
+        <div *ngIf="imagePreview" style="margin-top: 10px;">
+          <img [src]="imagePreview" [alt]="'Preview'" style="width: 100px; height: auto;">
+        </div>
+      </div>
+      <div class="p-field" *ngIf="imagePreview">
+        <p-button icon="pi pi-trash" label="ลบรูปภาพ" severity="danger" (click)="clearFileSelection('edit'); setDeleteImageFlag()"></p-button>
+      </div>
+    </div>
+    <p-footer>
+      <div class="button-group">
+        <p-button label="บันทึกการแก้ไข" icon="pi pi-check" type="submit" class="ui-button-primary"></p-button>
+        <p-button label="ยกเลิก" icon="pi pi-times" (click)="displayEditProductDialog=false" class="ui-button-secondary" severity="danger"></p-button>
+      </div>
+    </p-footer>
+  </form>
+</p-dialog>
+
+
+<p-dialog header="จัดโปรโมชั่นสินค้า" [(visible)]="displayPromotionDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeEditProductDialog()">
+  <app-promotion-page></app-promotion-page>
+</p-dialog>

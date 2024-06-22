@@ -1,0 +1,16 @@
+@import "../../../assets/styles/colors.scss";
+
+.logo {
+  max-width: 150px;
+  min-height: 40px;
+}
+
+.iconic {
+  font-size: 1rem;
+  margin-right: 0.5rem;
+  color: $color-pure-white !important;
+}
+
+:host ::ng-deep.logout-button-label .p-button-label {
+  font-size: 0.8rem;
+}

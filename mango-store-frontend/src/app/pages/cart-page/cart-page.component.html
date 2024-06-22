@@ -1,0 +1,47 @@
+<div class="p-grid p-dir-col p-ai-center p-jc-center full-height">
+  <div class="p-col-12 p-md-10">
+    <p-table [value]="carts" [tableStyle]="{ 'min-width': '50rem' }" responsiveLayout="scroll" emptyMessage="ไม่มีข้อมูลสินค้า">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>ชื่อสินค้า</th>
+          <th>ราคาสินค้า</th>
+          <th>จำนวน</th>
+          <th>รวม</th>
+          <th></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-cart>
+        <ng-container *ngIf="cart.items && cart.items.length; else noItems">
+          <ng-container *ngFor="let item of cart.items">
+            <tr>
+              <td>{{ item.product?.name }}</td>
+              <td>{{ item.product?.price | currency:'THB':'symbol':'1.2-2' }}</td>
+              <td>
+                <input type="number" [(ngModel)]="item.quantity" class="p-inputtext p-component"/>
+              </td>
+              <td>{{ (item.product?.price * item.quantity) | currency:'THB':'symbol':'1.2-2' }}</td>
+              <td>
+                <button pButton type="button" label="อัพเดต" icon="pi pi-refresh" class="p-button-success mx-1" (click)="updateItemQuantity(item)"></button>
+                <button pButton type="button" label="ลบ" icon="pi pi-trash" class="p-button-danger mx-1" (click)="removeItem(item.id)"></button>
+              </td>
+            </tr>
+          </ng-container>
+        </ng-container>
+        <ng-template #noItems>
+          <tr>
+            <td colspan="5" class="text-center">ไม่มีข้อมูลสินค้า</td>
+          </tr>
+        </ng-template>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <tr>
+          <td colspan="3" class="text-right"><strong>รวมทั้งหมด</strong></td>
+          <td>{{ getTotalAmount() | currency:'THB':'symbol':'1.2-2' }}</td>
+          <td>
+            <button pButton type="button" label="ชำระเงิน" icon="pi pi-shopping-cart" class="p-button-primary" [disabled]="isCartEmpty()" (click)="checkout()"></button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

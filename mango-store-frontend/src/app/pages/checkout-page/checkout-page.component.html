@@ -1,0 +1,40 @@
+<div class="p-grid p-dir-col p-ai-center p-jc-center full-height">
+    <div class="p-col-12 p-md-10">
+      <p-steps [model]="steps" [(activeIndex)]="activeIndex" [readonly]="false"></p-steps>
+      <div [ngSwitch]="activeIndex" class="p-mt-3">
+        <!-- Order Summary Step -->
+        <div *ngSwitchCase="0" class="p-grid p-dir-col p-ai-center p-jc-center">
+          <h2>Order Summary</h2>
+          <p>Total Amount: {{ totalAmount | currency:'THB':'symbol':'1.2-2' }}</p>
+          <div class="p-d-flex p-jc-between p-mt-3" style="width: 100%;">
+            <button pButton label="Next" icon="pi pi-chevron-right" (click)="goToStep(1)"></button>
+            <button pButton label="Cancel" icon="pi pi-times" class="p-button-danger" (click)="confirmCancel()"></button>
+
+          </div>
+        </div>
+        <!-- Payment Step -->
+        <div *ngSwitchCase="1" class="p-grid p-dir-col p-ai-center p-jc-center">
+          <h2>Payment</h2>
+          <p>Scan the QR code below to pay via PromptPay:</p>
+          <img src="assets/qrcode.png" alt="PromptPay QR Code" width="200" class="p-mb-3">
+          <p-fileUpload mode="basic" name="slip" accept="image/*" customUpload="true" (uploadHandler)="onUpload($event)"></p-fileUpload>
+          <div class="p-d-flex p-jc-between p-mt-3" style="width: 100%;">
+            <button pButton label="Previous" icon="pi pi-chevron-left" (click)="goToStep(0)"></button>
+            <button pButton label="Next" icon="pi pi-chevron-right" (click)="goToStep(2)" [disabled]="!isSlipUploaded"></button>
+            <button pButton label="Cancel" icon="pi pi-times" class="p-button-danger" (click)="confirmCancel()"></button>
+          </div>
+        </div>
+        <!-- Thank You Step -->
+        <div *ngSwitchCase="2" class="p-grid p-dir-col p-ai-center p-jc-center">
+          <h2>Thank You</h2>
+          <p>Thank you for your payment!</p>
+          <div class="p-d-flex p-jc-between p-mt-3" style="width: 100%;">
+            <button pButton label="Finish" icon="pi pi-check" (click)="finish()"></button>
+            <button pButton label="Cancel" icon="pi pi-times" class="p-button-danger" (click)="confirmCancel()"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p-confirmDialog header="Confirmation" icon="pi pi-exclamation-triangle" acceptLabel="Yes" rejectLabel="No" (accept)="cancel()" message="มึงจะยกเลิกการทำรายการนี้จริงๆใช่ไหม"></p-confirmDialog>
+  </div>
+  

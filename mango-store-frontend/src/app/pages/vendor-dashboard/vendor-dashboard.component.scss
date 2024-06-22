@@ -1,0 +1,37 @@
+:host ::ng-deep .p-button-label {
+    font-size: 0.8rem;
+}
+
+.default-image {
+    opacity: 0.5; /* Make default images look distinct */
+  }
+
+.product-container {
+  position: relative;
+  width: 100%; /* Responsive width */
+  max-width: 10rem; /* Maximum width of the image container */
+  margin: auto; /* Center align if within a flexible container */
+}
+
+.p-field{
+  padding: 1rem;
+}
+
+p-footer .button-group {
+  display: flex;
+  justify-content: flex-end; /* Aligns buttons to the right */
+  align-items: center; /* Centers buttons vertically */
+  width: 100%; /* Ensures the footer container takes up full width */
+}
+
+p-footer .button-group .ui-button {
+  margin-left: 10px; /* Adds space between buttons */
+}
+
+/* Optional: Adjust the width of the buttons if necessary */
+p-footer .button-group .ui-button-primary,
+p-footer .button-group .ui-button-secondary {
+  min-width: 100px; /* Ensures a minimum width for better control */
+}
+
+
