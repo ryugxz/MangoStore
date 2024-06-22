@@ -50,9 +50,20 @@ class VendorDetailController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, VendorDetail $vendorDetail)
+    public function update(Request $request, $user_id)
     {
-        //
+        // Find the vendor detail by user_id
+        $vendorDetail = VendorDetail::where('user_id', $user_id)->first();
+    
+        // Check if vendor detail exists
+        if (!$vendorDetail) {
+            return response()->json(['message' => 'Vendor detail not found'], 404);
+        }
+    
+        // Update the vendor detail
+        $vendorDetail->update($request->all());
+    
+        return response()->json(['message' => 'Vendor detail updated successfully']);
     }
 
     /**
@@ -61,5 +72,18 @@ class VendorDetailController extends Controller
     public function destroy(VendorDetail $vendorDetail)
     {
         //
+    }
+
+    public function showByUserId($user_id)
+    {
+        // Find the vendor detail by user_id
+        $vendorDetail = VendorDetail::where('user_id', $user_id)->first();
+    
+        // Check if vendor detail exists
+        if (!$vendorDetail) {
+            return response()->json(['message' => 'Vendor detail not found'], 404);
+        }
+    
+        return response()->json($vendorDetail);
     }
 }

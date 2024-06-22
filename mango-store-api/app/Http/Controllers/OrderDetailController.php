@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OrderDetail;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderDetailController extends Controller
@@ -12,7 +13,8 @@ class OrderDetailController extends Controller
      */
     public function index()
     {
-        //
+        $orderDetails = OrderDetail::all();
+        return response()->json($orderDetails);
     }
 
     /**
@@ -20,7 +22,8 @@ class OrderDetailController extends Controller
      */
     public function create()
     {
-        //
+        // Return any necessary data for creating an order detail
+        // return response()->json(['products' => Product::all()]);
     }
 
     /**
@@ -28,7 +31,15 @@ class OrderDetailController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validatedData = $request->validate([
+            'order_id' => 'required|exists:orders,id',
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer',
+            'price' => 'required|numeric',
+        ]);
+
+        $orderDetail = OrderDetail::create($validatedData);
+        return response()->json($orderDetail, 201);
     }
 
     /**
@@ -36,7 +47,7 @@ class OrderDetailController extends Controller
      */
     public function show(OrderDetail $orderDetail)
     {
-        //
+        return response()->json($orderDetail->load('product'));
     }
 
     /**
@@ -44,7 +55,8 @@ class OrderDetailController extends Controller
      */
     public function edit(OrderDetail $orderDetail)
     {
-        //
+        // Return necessary data for editing an order detail
+        // return response()->json(['orderDetail' => $orderDetail, 'products' => Product::all()]);
     }
 
     /**
@@ -52,7 +64,14 @@ class OrderDetailController extends Controller
      */
     public function update(Request $request, OrderDetail $orderDetail)
     {
-        //
+        $validatedData = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer',
+            'price' => 'required|numeric',
+        ]);
+
+        $orderDetail->update($validatedData);
+        return response()->json($orderDetail);
     }
 
     /**
@@ -60,6 +79,13 @@ class OrderDetailController extends Controller
      */
     public function destroy(OrderDetail $orderDetail)
     {
-        //
+        $orderDetail->delete();
+        return response()->json(null, 204);
     }
+
+    public function searchByOrderId($orderId)
+{
+    $orderDetails = OrderDetail::where('order_id', $orderId)->with('product')->get();
+    return response()->json($orderDetails);
+}
 }
