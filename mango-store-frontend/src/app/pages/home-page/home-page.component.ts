@@ -46,6 +46,7 @@ export class HomePageComponent implements OnInit {
   displayAddToCartDialog: boolean = false; // Add displayAddToCartDialog
   selectedProduct: Product | null = null;
   quantity: number = 1; // Add quantity
+  shippingAddress: string = ''; // Add shippingAddress
 
   constructor(
     private productService: ProductService,
@@ -113,6 +114,7 @@ export class HomePageComponent implements OnInit {
     }
     this.selectedProduct = product;
     this.quantity = 1;
+    this.shippingAddress = localStorage.getItem('address') || ''; // Reset shipping address
     this.displayAddToCartDialog = true; // Show the add to cart dialog
   }
 
@@ -127,7 +129,7 @@ export class HomePageComponent implements OnInit {
       return;
     }
 
-    this.cartService.addItemToCart(this.selectedProduct!.id, this.quantity).subscribe({
+    this.cartService.addItemToCart(this.selectedProduct!.id, this.quantity, this.shippingAddress).subscribe({
       next: () => {
         this.messageService.add({
           severity: 'success',

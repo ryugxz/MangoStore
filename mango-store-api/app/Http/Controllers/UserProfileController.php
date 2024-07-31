@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\UserProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
 
 class UserProfileController extends Controller
 {
@@ -52,16 +54,26 @@ class UserProfileController extends Controller
      */
     public function update(Request $request, $user_id)
     {
+        // Log the incoming request data and user_id
+        Log::info('Update User Profile Request', [
+            'user_id' => $user_id,
+            'request_data' => $request->all()
+        ]);
+    
         // Find the user profile by user_id
         $userProfile = UserProfile::where('user_id', $user_id)->first();
     
         // Check if user profile exists
         if (!$userProfile) {
+            Log::warning('User profile not found', ['user_id' => $user_id]);
             return response()->json(['message' => 'User profile not found'], 404);
         }
     
         // Update the user profile
         $userProfile->update($request->all());
+    
+        // Log the successful update
+        Log::info('User profile updated successfully', ['user_id' => $user_id]);
     
         return response()->json(['message' => 'User profile updated successfully']);
     }

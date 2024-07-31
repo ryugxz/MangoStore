@@ -46,7 +46,7 @@
     [style]="{ width: '50vw' }" 
   >
     <div class="appForm">
-      <app-edit-page></app-edit-page>
+      <app-edit-page (updateComplete)="handleUpdateComplete($event)"></app-edit-page>
     </div>
   </p-dialog>
 </div>

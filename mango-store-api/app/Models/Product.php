@@ -29,9 +29,13 @@ class Product extends Model
     public function images() {
         return $this->hasMany(ProductImage::class);
     }
+    
     public function promotion() {
         return $this->hasOne(Promotion::class);
     }
-    
-    
+
+    // Define vendorDetail relationship
+    public function vendorDetail() {
+        return $this->belongsTo(VendorDetail::class, 'vendor_id', 'user_id');
+    }
 }

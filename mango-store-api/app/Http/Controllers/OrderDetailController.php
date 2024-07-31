@@ -36,6 +36,7 @@ class OrderDetailController extends Controller
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer',
             'price' => 'required|numeric',
+            'shipping_address' => 'required|string|max:255', // เพิ่มการตรวจสอบที่อยู่จัดส่ง
         ]);
 
         $orderDetail = OrderDetail::create($validatedData);
@@ -68,6 +69,7 @@ class OrderDetailController extends Controller
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer',
             'price' => 'required|numeric',
+            'shipping_address' => 'required|string|max:255', // เพิ่มการตรวจสอบที่อยู่จัดส่ง
         ]);
 
         $orderDetail->update($validatedData);
@@ -84,8 +86,8 @@ class OrderDetailController extends Controller
     }
 
     public function searchByOrderId($orderId)
-{
-    $orderDetails = OrderDetail::where('order_id', $orderId)->with('product')->get();
-    return response()->json($orderDetails);
-}
+    {
+        $orderDetails = OrderDetail::where('order_id', $orderId)->with('product')->get();
+        return response()->json($orderDetails);
+    }
 }

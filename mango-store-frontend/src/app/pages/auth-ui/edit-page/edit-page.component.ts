@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Output, EventEmitter } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { FloatLabelModule } from 'primeng/floatlabel';
@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 import { DropdownModule } from 'primeng/dropdown';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { UserProfile, VendorDetail } from '../../../model/user.model';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService, UserInfoResponse } from '../../../services/auth.service';
 import { Subscription } from 'rxjs';
 
 interface Bank {
@@ -31,8 +31,11 @@ interface Bank {
   styleUrls: ['./edit-page.component.scss']
 })
 export class EditPageComponent implements OnInit, OnDestroy {
+  @Output() updateComplete = new EventEmitter<boolean>();  // Add this line
+
   role: string | null = null;
   private roleSubscription: Subscription;
+  loading: boolean = false;
 
   userProfile: UserProfile = {
     firstname: '',
@@ -69,6 +72,7 @@ export class EditPageComponent implements OnInit, OnDestroy {
   ];
 
   selectedBank: Bank | null = null;
+  userInfo: UserInfoResponse | undefined;
 
   constructor(private authService: AuthService) {
     this.roleSubscription = this.authService.role$.subscribe(role => {
@@ -77,7 +81,31 @@ export class EditPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    console.log('initialized edit mode');
+    this.me(); // Fetch user info on init
+  }
+
+  me(): void {
+    this.loading = true;
+    this.authService.me().subscribe((data: UserInfoResponse | undefined) => {
+      console.log('API response:', data);
+      if (data) {
+        this.userInfo = data;
+        this.userProfile = data.profile;
+
+        if (data.vendorDetail) {
+          this.vendorDetail = data.vendorDetail;
+          this.selectedBank = this.banks.find(bank => bank.value === data.vendorDetail?.bank_name) || null;
+        }
+      }
+      console.log('UserInfo set:', this.userInfo);
+      this.loading = false;
+    }, error => {
+      console.error('Error fetching user info', error);
+      this.loading = false;
+    });
+  }
 
   ngOnDestroy() {
     if (this.roleSubscription) {
@@ -105,12 +133,75 @@ export class EditPageComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(form: NgForm) {
-    if (this.role === 'vendor') {
-      // Handle vendor form submission
-      console.log('Vendor form data:', { ...this.userProfile, ...this.vendorDetail, bank: this.selectedBank });
+    console.log('onSubmit called');
+    this.loading = true;
+    
+    const userId = localStorage.getItem('user_id');
+    console.log('Role:', this.role);
+    console.log('UserId:', userId);
+
+    if (this.role === 'vendor' && userId) {
+      this.vendorDetail.bank_name = this.selectedBank ? this.selectedBank.value : '';
+      console.log('Vendor form submission');
+      try {
+        this.authService.updateProfile(this.userProfile, +userId).subscribe(
+          profileResponse => {
+            console.log('Profile updated:', profileResponse);
+            try {
+              console.log('Updating vendor details');
+              this.authService.updateVendorDetail(this.vendorDetail, +userId).subscribe(
+                vendorResponse => {
+                  console.log('Vendor details updated:', vendorResponse);
+                  this.loading = false;
+                  this.updateComplete.emit(true);  // Emit success event
+                },
+                vendorError => {
+                  console.error('Error updating vendor details:', vendorError);
+                  this.loading = false;
+                  this.updateComplete.emit(false);  // Emit failure event
+                }
+              );
+            } catch (error) {
+              console.error('Error in updateVendorDetail:', error);
+              this.loading = false;
+              this.updateComplete.emit(false);  // Emit failure event
+            }
+          },
+          profileError => {
+            console.error('Error updating profile:', profileError);
+            this.loading = false;
+            this.updateComplete.emit(false);  // Emit failure event
+          }
+        );
+      } catch (error) {
+        console.error('Error in updateProfile:', error);
+        this.loading = false;
+        this.updateComplete.emit(false);  // Emit failure event
+      }
+    } else if (userId) {
+      console.log('Customer form submission');
+      try {
+        this.authService.updateProfile(this.userProfile, +userId).subscribe(
+          profileResponse => {
+            console.log('Profile updated:', profileResponse);
+            this.loading = false;
+            this.updateComplete.emit(true);  // Emit success event
+          },
+          profileError => {
+            console.error('Error updating profile:', profileError);
+            this.loading = false;
+            this.updateComplete.emit(false);  // Emit failure event
+          }
+        );
+      } catch (error) {
+        console.error('Error in updateProfile:', error);
+        this.loading = false;
+        this.updateComplete.emit(false);  // Emit failure event
+      }
     } else {
-      // Handle customer form submission
-      console.log('Customer form data:', this.userProfile);
+      console.log('No matching condition found.');
+      this.loading = false;
+      this.updateComplete.emit(false);  // Emit failure event
     }
   }
 

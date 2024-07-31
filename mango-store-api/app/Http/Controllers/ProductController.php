@@ -19,7 +19,11 @@ class ProductController extends Controller
     public function index()
     {
         try {
-            $products = Product::all();  // Fetch all products from the database
+            $this->removeExpiredPromotions();
+
+            $products = Product::with(['images', 'promotion' => function($query) {
+                $query->where('end_date', '>=', now());
+            }])->get();  // Fetch all products with active promotions
 
             if ($products->isEmpty()) {
                 return response()->json([
@@ -152,12 +156,18 @@ class ProductController extends Controller
         }
     }    
       
-    
     public function search(Request $request)
     {
         try {
+            Log::info('Starting search method', ['request' => $request->all()]);
+
+            // Remove expired promotions before search
+            $this->removeExpiredPromotions();
+
             // Start building the query and load relationships
-            $query = Product::with(['images', 'promotion']);
+            $query = Product::with(['images', 'promotion' => function($query) {
+                $query->where('end_date', '>=', now());
+            }]);
     
             // Search by product ID
             if ($request->has('product_id')) {
@@ -190,7 +200,10 @@ class ProductController extends Controller
                 'data' => $products
             ], 200);
         } catch (\Exception $e) {
-            Log::error('Error searching for products: ' . $e->getMessage());
+            Log::error('Error searching for products', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'message' => 'Failed to search for products',
                 'error' => $e->getMessage()
@@ -198,8 +211,6 @@ class ProductController extends Controller
         }
     }
     
-    
-
     /**
      * Show the form for editing the specified resource.
      */
@@ -211,10 +222,7 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-/**
- * Update the specified resource in storage.
- */
-public function update(Request $request, Product $product)
+    public function update(Request $request, Product $product)
     {
         Log::info('Received update request:', [
             'headers' => $request->headers->all(),
@@ -323,7 +331,6 @@ public function update(Request $request, Product $product)
         }
     }
 
-
     /**
      * Remove the specified resource from storage.
      */
@@ -351,7 +358,6 @@ public function update(Request $request, Product $product)
             ], 500);
         }
     }
-    
 
     private function compressAndConvertToBase64($sourcePath, $quality) {
         $info = getimagesize($sourcePath);
@@ -387,4 +393,47 @@ public function update(Request $request, Product $product)
         // Encode the compressed image data to base64
         return 'data:' . $info['mime'] . ';base64,' . base64_encode($compressedData);
     }
+
+    /**
+     * Remove expired promotions from the database and update products using expired promotions.
+     */
+    protected function removeExpiredPromotions()
+    {
+        Log::info('Removing expired promotions');
+
+        try {
+            $expiredPromotions = Promotion::where('end_date', '<', now())->get();
+
+            foreach ($expiredPromotions as $promotion) {
+                Log::info('Removing expired promotion', [
+                    'promotion_id' => $promotion->id,
+                    'product_id' => $promotion->product_id
+                ]);
+
+                // Find the product associated with the expired promotion
+                $product = Product::where('id', $promotion->product_id)->first();
+                if ($product && $product->promotion_id == $promotion->id) {
+                    Log::info('Updating product to nullify expired promotion', [
+                        'product_id' => $product->id,
+                        'promotion_id' => $promotion->id
+                    ]);
+
+                    // Nullify the promotion relationship
+                    $product->promotion_id = null;
+                    $product->save();
+                }
+
+                // Delete the expired promotion
+                $promotion->delete();
+            }
+
+            Log::info('Expired promotions removed successfully');
+        } catch (\Exception $e) {
+            Log::error('Error removing expired promotions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
 }

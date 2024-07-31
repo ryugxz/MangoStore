@@ -6,6 +6,7 @@
           <th>ชื่อสินค้า</th>
           <th>ราคาสินค้า</th>
           <th>จำนวน</th>
+          <th>ส่วนลด</th>
           <th>รวม</th>
           <th></th>
         </tr>
@@ -14,12 +15,21 @@
         <ng-container *ngIf="cart.items && cart.items.length; else noItems">
           <ng-container *ngFor="let item of cart.items">
             <tr>
-              <td>{{ item.product?.name }}</td>
+              <td>
+                {{ item.product?.name }}
+                <div *ngIf="item.promotion" class="promotion-details">
+                  <p-tag [value]="getPromotionDescription(item.promotion)"></p-tag>
+                </div>
+              </td>
               <td>{{ item.product?.price | currency:'THB':'symbol':'1.2-2' }}</td>
               <td>
                 <input type="number" [(ngModel)]="item.quantity" class="p-inputtext p-component"/>
               </td>
-              <td>{{ (item.product?.price * item.quantity) | currency:'THB':'symbol':'1.2-2' }}</td>
+              <td>
+                <div *ngIf="item.promotion">{{ calculateDiscount(item) | currency:'THB':'symbol':'1.2-2' }}</div>
+                <div *ngIf="!item.promotion">ไม่มีส่วนลด</div>
+              </td>
+              <td>{{ calculateDiscountedPrice(item) | currency:'THB':'symbol':'1.2-2' }}</td>
               <td>
                 <button pButton type="button" label="อัพเดต" icon="pi pi-refresh" class="p-button-success mx-1" (click)="updateItemQuantity(item)"></button>
                 <button pButton type="button" label="ลบ" icon="pi pi-trash" class="p-button-danger mx-1" (click)="removeItem(item.id)"></button>
@@ -29,13 +39,13 @@
         </ng-container>
         <ng-template #noItems>
           <tr>
-            <td colspan="5" class="text-center">ไม่มีข้อมูลสินค้า</td>
+            <td colspan="6" class="text-center">ไม่มีข้อมูลสินค้า</td>
           </tr>
         </ng-template>
       </ng-template>
       <ng-template pTemplate="footer">
         <tr>
-          <td colspan="3" class="text-right"><strong>รวมทั้งหมด</strong></td>
+          <td colspan="4" class="text-right"><strong>รวมทั้งหมด</strong></td>
           <td>{{ getTotalAmount() | currency:'THB':'symbol':'1.2-2' }}</td>
           <td>
             <button pButton type="button" label="ชำระเงิน" icon="pi pi-shopping-cart" class="p-button-primary" [disabled]="isCartEmpty()" (click)="checkout()"></button>

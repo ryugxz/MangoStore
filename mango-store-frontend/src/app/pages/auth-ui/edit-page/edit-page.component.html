@@ -1,4 +1,8 @@
 <form #form="ngForm" (ngSubmit)="onSubmit(form)" class="p-fluid p-3">
+  <div *ngIf="loading" class="spinner-container">
+    <p-progressSpinner ariaLabel="loading"></p-progressSpinner>
+  </div>
+
   <div class="field p-2">
     <p-floatLabel>
       <input pInputText id="firstname" name="firstname" type="text" [(ngModel)]="userProfile.firstname" required />
@@ -37,7 +41,7 @@
   <div *ngIf="role === 'vendor'">
     <div class="field">
       <h3>ข้อมูลร้านค้า</h3>
-    </div>xx
+    </div>
 
     <div class="field p-2">
       <p-floatLabel>

@@ -39,19 +39,16 @@
           }
       
           try {
-              // ตรวจสอบว่ามีผู้ใช้ที่มี role 'Admin' อยู่แล้วเกิน 3 คนหรือไม่
               if (strtolower($request->role) === 'admin' && User::whereRaw('lower(role) = ?', ['admin'])->count() >= 3) {
                   return response()->json(['error' => 'Unauthorized', 'message' => 'Cannot have more than 3 admin users'], 403);
               }
       
-              // สร้าง User
               $user = User::create([
                   'username' => $request->username,
                   'password' => bcrypt($request->password),
                   'role' => $request->role
               ]);
       
-              // สร้าง UserProfile และผูกกับ User ที่สร้างใหม่
               $userProfile = UserProfile::create([
                   'user_id' => $user->id,
                   'firstname' => $request->firstname,
@@ -145,7 +142,35 @@
        */
       public function me()
       {
-          return response()->json(auth()->user());
+          $authorizationHeader = request()->header('Authorization');
+      
+          // Log the authorization header
+          Log::info('Authorization Header: ' . $authorizationHeader);
+      
+          if (!$authorizationHeader) {
+              return response()->json(['message' => 'Authorization header missing'], 400);
+          }
+      
+          try {
+              $user = auth()->user();
+      
+              if (!$user) {
+                  return response()->json(['message' => 'User not authenticated'], 401);
+              }
+      
+              // Load user profile and vendor detail if exists
+              $user->profile = UserProfile::where('user_id', $user->id)->first();
+              if ($user->role === 'vendor' || $user->role === 'admin') {
+                  $user->vendorDetail = VendorDetail::where('user_id', $user->id)->first();
+              }
+      
+              return response()->json($user);
+      
+          } catch (\Exception $e) {
+              // Log the error
+              Log::error('Error during authentication: ' . $e->getMessage());
+              return response()->json(['message' => 'Internal server error'], 500);
+          }
       }
   
       /**

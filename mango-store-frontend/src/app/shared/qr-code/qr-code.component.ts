@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core'; // Import SimpleChanges
 import promptpay from 'promptpay-qr';
 import * as qrcode from 'qrcode';
 import { CommonModule } from '@angular/common';
@@ -10,7 +10,7 @@ import { SplitterModule } from 'primeng/splitter';
   selector: 'app-qr-code',
   standalone: true,
   imports: [
-    CommonModule, 
+    CommonModule,
     FormsModule,
     CardModule,
     SplitterModule
@@ -18,28 +18,42 @@ import { SplitterModule } from 'primeng/splitter';
   templateUrl: './qr-code.component.html',
   styleUrls: ['./qr-code.component.scss']
 })
-export class QrCodeComponent implements OnInit {
-  qrCodeUrl: string = '';
-  phoneNumber: string = '0623524572'; // Variable for phone number
-  amount: number = 10; // Variable for amount, initialized with a default value
+export class QrCodeComponent implements OnChanges {
+  @Input() phoneNumber: string = '0623524572'; // Default value
+  @Input() amount: number = 0;
+  @Input() userName: string = '';
 
-  ngOnInit(): void {
-    this.generateQRCode();
+  qrCodeUrl: string = '';
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['phoneNumber'] || changes['amount']) {
+      this.generateQRCode();
+    }
   }
 
   generateQRCode(): void {
-    if (this.phoneNumber && this.amount !== undefined) {
-      const payload = promptpay(this.phoneNumber, { amount: this.amount });
-
-      qrcode.toDataURL(payload, (err: any, url: string) => {
-        if (!err) {
-          this.qrCodeUrl = url;
-        } else {
-          console.error('Error generating QR Code:', err);
-        }
-      });
+    const amountNumber = this.amount;
+    console.log('phone : '+this.phoneNumber);
+    console.log('amount : '+amountNumber);
+    
+    
+  
+    if (this.phoneNumber && !isNaN(amountNumber) && amountNumber > 0) {
+      try {
+        const payload = promptpay(this.phoneNumber, { amount: amountNumber });
+        qrcode.toDataURL(payload, (err: Error | null | undefined, url: string) => {
+          if (!err) {
+            this.qrCodeUrl = url;
+          } else {
+            console.error('Error generating QR Code:', err);
+          }
+        });
+      } catch (error) {
+        console.error('Error generating PromptPay payload:', error);
+      }
     } else {
-      console.error('Phone number or amount is missing');
+      console.error('Phone number or valid amount is missing');
     }
   }
+  
 }

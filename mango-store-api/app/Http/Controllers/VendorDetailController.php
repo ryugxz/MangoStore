@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\VendorDetail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
 
 class VendorDetailController extends Controller
 {
@@ -52,18 +54,38 @@ class VendorDetailController extends Controller
      */
     public function update(Request $request, $user_id)
     {
-        // Find the vendor detail by user_id
-        $vendorDetail = VendorDetail::where('user_id', $user_id)->first();
-    
-        // Check if vendor detail exists
-        if (!$vendorDetail) {
-            return response()->json(['message' => 'Vendor detail not found'], 404);
+        Log::info('VendorDetail update operation started.', ['user_id' => $user_id]);
+
+        // Log the incoming request data
+        Log::info('Incoming request data:', $request->all());
+
+        try {
+            // Find the vendor detail by user_id
+            $vendorDetail = VendorDetail::where('user_id', $user_id)->first();
+
+            // Log the result of the vendor detail search
+            if (!$vendorDetail) {
+                Log::warning('Vendor detail not found.', ['user_id' => $user_id]);
+                return response()->json(['message' => 'Vendor detail not found'], 404);
+            }
+
+            Log::info('Vendor detail found.', ['vendorDetail' => $vendorDetail]);
+
+            // Update the vendor detail
+            $vendorDetail->update($request->all());
+
+            Log::info('Vendor detail updated successfully.', ['vendorDetail' => $vendorDetail]);
+
+            return response()->json(['message' => 'Vendor detail updated successfully']);
+        } catch (\Exception $e) {
+            Log::error('Error updating vendor detail.', [
+                'user_id' => $user_id,
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString()
+            ]);
+
+            return response()->json(['message' => 'Failed to update vendor detail'], 500);
         }
-    
-        // Update the vendor detail
-        $vendorDetail->update($request->all());
-    
-        return response()->json(['message' => 'Vendor detail updated successfully']);
     }
 
     /**

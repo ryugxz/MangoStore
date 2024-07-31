@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { MenubarModule } from 'primeng/menubar';
 import { MenuItem } from 'primeng/api';
 import { DialogModule } from 'primeng/dialog';
@@ -9,7 +9,6 @@ import { AuthService } from '../../services/auth.service';
 import { ButtonModule } from 'primeng/button';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-main-navbar',
@@ -26,10 +25,10 @@ import { RouterLink } from '@angular/router';
   templateUrl: './main-navbar.component.html',
   styleUrls: ['./main-navbar.component.scss'],
 })
-export class MainNavbarComponent implements OnInit {
+export class MainNavbarComponent implements OnInit, OnDestroy {
   currentRole: string | null = null;
   loginHeader: string = 'เข้าสู่ระบบ';
-  editHeader : string = 'แก้ไขข้อมูลส่วนตัว';
+  editHeader: string = 'แก้ไขข้อมูลส่วนตัว';
   registerRole: 'customer' | 'vendor' | null = null;
   registerHeader!: string;
   registerHeaderForCustomer: string = 'สมัครสมาชิกลูกค้า';
@@ -39,6 +38,8 @@ export class MainNavbarComponent implements OnInit {
   isVisibleEditModal: boolean = false;
   items!: MenuItem[];
   private roleSubscription: Subscription;
+
+  @ViewChild(EditPageComponent) editPageComponent!: EditPageComponent;
 
   constructor(private authService: AuthService) {
     this.roleSubscription = this.authService.role$.subscribe(role => {
@@ -71,7 +72,6 @@ export class MainNavbarComponent implements OnInit {
     this.isVisibleLoginModal = false;
     this.isVisibleRegisterModal = false;
   }
-  
 
   menuItemsSettings(items: MenuItem[]) {
     this.items = items;
@@ -96,6 +96,18 @@ export class MainNavbarComponent implements OnInit {
 
   openEditModal() {
     this.isVisibleEditModal = true;
+    if (this.editPageComponent) {
+      this.editPageComponent.me();
+    }
+  }
+
+  handleUpdateComplete(success: boolean) {
+    if (success) {
+      console.log('Update succeeded');
+    } else {
+      console.log('Update failed');
+    }
+    this.isVisibleEditModal = false;
   }
 
   logout() {
@@ -106,7 +118,7 @@ export class MainNavbarComponent implements OnInit {
     return [
       {
         label: 'สมัครสมาชิก',
-        icon: 'pi pi-fw pi-user',
+        icon: 'pi pi-fw pi-user-plus',
         items: [
           {
             label: 'สมัครสมาชิกลูกค้า',
@@ -118,7 +130,7 @@ export class MainNavbarComponent implements OnInit {
           },
           {
             label: 'สมัครสมาชิกร้านค้า',
-            icon: 'pi pi-fw pi-shop',
+            icon: 'pi pi-fw pi-user-plus',
             command: () => this.openRegisterModal('vendor'),
           },
         ],
@@ -130,7 +142,7 @@ export class MainNavbarComponent implements OnInit {
       },
     ];
   }
-
+  
   customerItems() {
     return [
       {
@@ -140,22 +152,27 @@ export class MainNavbarComponent implements OnInit {
       },
       {
         label: 'ตะกร้าสินค้า',
-        icon: 'pi pi-fw pi-shopping-bag',
+        icon: 'pi pi-fw pi-shopping-cart',
         routerLink : 'cart'
       },
       {
+        label: 'คำสั่งซื้อของฉัน',
+        icon: 'pi pi-fw pi-list',
+        routerLink : ['/order-customer']
+      },
+      {
         label: 'แก้ไขข้อมูลส่วนตัว',
-        icon: 'pi pi-fw pi-sign-in',
+        icon: 'pi pi-fw pi-user-edit',
         command: () => this.openEditModal(),
       },
       {
         label: 'สถานะการสั่งซื้อ',
-        icon: 'pi pi-fw pi-shopping-bag',
-        routerLink : 'order-customer'
+        icon: 'pi pi-fw pi-clock',
+        routerLink : 'order-status'
       },
     ];
   }
-
+  
   vendorItems() {
     return [
       {
@@ -165,22 +182,32 @@ export class MainNavbarComponent implements OnInit {
       },
       {
         label: 'ตะกร้าสินค้า',
-        icon: 'pi pi-fw pi-shopping-bag',
+        icon: 'pi pi-fw pi-shopping-cart',
         routerLink : 'cart'
       },
       {
+        label: 'คำสั่งซื้อของฉัน',
+        icon: 'pi pi-fw pi-list',
+        routerLink : ['/order-customer']
+      },
+      {
+        label: 'รายการขาย',
+        icon: 'pi pi-fw pi-dollar',
+        routerLink : ['/order-status']
+      },
+      {
         label: 'จัดการสินค้า',
-        icon: 'pi pi-fw pi-sign-in',
+        icon: 'pi pi-fw pi-cog',
         routerLink : 'vendor-dashboard'
       },
       {
         label: 'แก้ไขข้อมูลส่วนตัว',
-        icon: 'pi pi-fw pi-sign-in',
+        icon: 'pi pi-fw pi-user-edit',
         command: () => this.openEditModal(),
       },
     ];
   }
-
+  
   adminItems() {
     return [
       {
@@ -190,24 +217,30 @@ export class MainNavbarComponent implements OnInit {
       },
       {
         label: 'ตะกร้าสินค้า',
-        icon: 'pi pi-fw pi-shopping-bag',
+        icon: 'pi pi-fw pi-shopping-cart',
         routerLink : 'cart'
       },
       {
-        label: 'จัดการสินค้า',
-        icon: 'pi pi-fw pi-sign-in',
+        label: 'คำสั่งซื้อสินค้าในระบบ',
+        icon: 'pi pi-fw pi-list',
+        routerLink : ['/order-customer']
+      },
+      {
+        label: 'รายการขายสินค้าในระบบ',
+        icon: 'pi pi-fw pi-dollar',
+        routerLink : ['/order-vendor']
+      },
+      {
+        label: 'จัดการสินค้าในระบบ',
+        icon: 'pi pi-fw pi-cog',
         routerLink : 'vendor-dashboard'
       },
       {
         label: 'แก้ไขข้อมูลส่วนตัว',
-        icon: 'pi pi-fw pi-sign-in',
+        icon: 'pi pi-fw pi-user-edit',
         command: () => this.openEditModal(),
-      },
-      {
-        label: 'รายการสั่งซื้อสินค้า',
-        icon: 'pi pi-fw pi-shopping-bag',
-        routerLink : 'order-vendor'
-      },
+      }
     ];
   }
+  
 }

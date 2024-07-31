@@ -35,22 +35,22 @@ export const routes: Routes = [
         data: { expectedRoles: ['vendor', 'admin','customer'] }
       },
       {
-        path: 'order-vendor',
-        loadComponent: () =>
-          import('./pages/order-vendor-page/order-vendor-page.component').then(
-            (m) => m.OrderVendorPageComponent,
-          ),
-        canActivate: [authGuard],
-        data: { expectedRoles: ['vendor', 'admin'] }
-      },
-      {
         path: 'order-customer',
         loadComponent: () =>
           import('./pages/order-customer-page/order-customer-page.component').then(
             (m) => m.OrderCustomerPageComponent,
           ),
         canActivate: [authGuard],
-        data: { expectedRoles: ['customer', 'admin'] }
+        data: { expectedRoles: ['vendor', 'admin','customer'] }
+      },
+      {
+        path: 'order-status',
+        loadComponent: () =>
+          import('./pages/order-status-page/order-status-page.component').then(
+            (m) => m.OrderStatusPageComponent,
+          ),
+        canActivate: [authGuard],
+        data: { expectedRoles: ['vendor', 'admin','customer'] }
       }
     ],
   },

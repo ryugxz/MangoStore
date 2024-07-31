@@ -13,6 +13,8 @@ return new class extends Migration
             $table->foreignId('cart_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->unsignedInteger('quantity');
+            $table->decimal('discount', 8, 2)->default(0);
+            $table->boolean('is_free')->default(false);
             $table->timestamps();
         });
     }
@@ -22,3 +24,4 @@ return new class extends Migration
         Schema::dropIfExists('cart_items');
     }
 };
+

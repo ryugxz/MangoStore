@@ -9,8 +9,10 @@ import { DialogModule } from 'primeng/dialog';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { ProductService } from './../../services/product.service';
+import { PromotionService } from './../../services/promotion.service';
 import { DividerModule } from 'primeng/divider';
 import { Product } from './../../model/product.model';
+import { Promotion, PromotionTypeResponse } from '../../model/promotion.model';
 import { FloatLabelModule } from 'primeng/floatlabel';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputTextareaModule } from 'primeng/inputtextarea';
@@ -18,12 +20,14 @@ import { FileUploadModule } from 'primeng/fileupload';
 import { FileUpload } from 'primeng/fileupload';
 import { finalize } from 'rxjs/operators';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { ImageModule } from 'primeng/image';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { AuthService } from '../../services/auth.service';
-import { PromotionPageComponent } from '../promotion-page/promotion-page.component';
+import { CheckboxModule } from 'primeng/checkbox';
+import { DropdownModule } from 'primeng/dropdown';
+import { CalendarModule } from 'primeng/calendar';
 
 @Component({
   selector: 'app-vendor-dashboard',
@@ -47,36 +51,51 @@ import { PromotionPageComponent } from '../promotion-page/promotion-page.compone
     ImageModule,
     InputNumberModule,
     InputSwitchModule,
-    PromotionPageComponent
+    CheckboxModule,
+    DropdownModule,
+    CalendarModule
   ],
   providers: [
-    ProductService  // Register ProductService
+    ProductService,
+    PromotionService,
+    ConfirmationService,
+    MessageService
   ],
   templateUrl: './vendor-dashboard.component.html',
   styleUrls: ['./vendor-dashboard.component.scss']
 })
 export class VendorDashboardComponent implements OnInit {
-  displayEditProductDialog: boolean = false;
   displayAddProductDialog: boolean = false;
-  displayPromotionDialog: boolean = false;
+  displayEditProductDialog: boolean = false;
+  displayAddPromotionDialog: boolean = false;
+  displayEditPromotionDialog: boolean = false;
+
+  addProductForm: FormGroup;
+  editProductForm: FormGroup;
+  addPromotionForm: FormGroup;
+  editPromotionForm: FormGroup;
+
   products: Product[] = [];
   paginatedProducts: Product[] = [];
+  selectedProducts: Product[] = [];
   first: number = 0;
   rows: number = 10;
   editingProduct: Product | null = null;
   deleteImageFlag: boolean = false;
-  addProductForm: FormGroup;
-  editProductForm: FormGroup;
   selectedFile: File | null = null;
   vendor_id: string | null = null;
   imagePreview: string | null = null;
+  promotionTypes: any[] = [];
+
   @ViewChild('fileUploadAdd', { static: false }) fileUploadAdd!: FileUpload;
   @ViewChild('fileUploadEdit', { static: false }) fileUploadEdit!: FileUpload;
 
   constructor(
     private fb: FormBuilder,
     private productService: ProductService,
+    private promotionService: PromotionService,
     private confirmationService: ConfirmationService,
+    private messageService: MessageService,
     private authService: AuthService
   ) {
     this.vendor_id = localStorage.getItem('user_id');
@@ -98,24 +117,44 @@ export class VendorDashboardComponent implements OnInit {
       is_available: [false, Validators.required],
       image: [null]
     });
+
+    this.addPromotionForm = this.fb.group({
+      promotion_type_id: [null, Validators.required],
+      discount_value: [0, [Validators.required, Validators.min(0)]],
+      start_date: [null, Validators.required],
+      end_date: [null, Validators.required],
+      min_quantity: [0, Validators.min(0)],
+      min_price: [0, Validators.min(0)],
+      description: ['']
+    });
+
+    this.editPromotionForm = this.fb.group({
+      promotion_type_id: [null, Validators.required],
+      discount_value: [0, [Validators.required, Validators.min(0)]],
+      start_date: [null, Validators.required],
+      end_date: [null, Validators.required],
+      min_quantity: [0, Validators.min(0)],
+      min_price: [0, Validators.min(0)],
+      description: ['']
+    });
   }
 
   ngOnInit() {
     if (this.vendor_id) {
       this.loadProducts();
     } else {
-      console.error('Vendor ID is not available.');
+      this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'ไม่พบ Vendor ID', life: 3000});
     }
+    this.loadPromotionTypes();
   }
 
   loadProducts() {
-    const vendorId = this.vendor_id ?? undefined; // Convert null to undefined
+    const vendorId = this.vendor_id ?? undefined;
     const role = this.authService.getRole();
-    if (role === 'admin') {      
+    if (role === 'admin') {
       this.productService.searchProducts({}).subscribe({
         next: (products) => {
           this.products = Array.isArray(products) ? products : [];
-          console.log(products);
           this.updatePaginatedProducts();
         },
         error: (error) => {
@@ -128,7 +167,6 @@ export class VendorDashboardComponent implements OnInit {
       this.productService.searchProducts({ vendor_id: vendorId }).subscribe({
         next: (products) => {
           this.products = Array.isArray(products) ? products : [];
-          console.log(products);
           this.updatePaginatedProducts();
         },
         error: (error) => {
@@ -138,28 +176,26 @@ export class VendorDashboardComponent implements OnInit {
         }
       });
     } else {
-      console.error('Vendor ID is not available.');
+      this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'ไม่พบ Vendor ID', life: 3000});
     }
   }
 
-  updatePaginatedProducts() {
-    const startIndex = this.first;
-    const endIndex = this.first + this.rows;
-    this.paginatedProducts = this.products.slice(startIndex, endIndex);
-  }
-
-  onPageChange(event: any) {
-    this.first = event.first;
-    this.rows = event.rows;
-    this.updatePaginatedProducts();
+  loadPromotionTypes() {
+    this.promotionService.getPromotionTypes().subscribe({
+      next: (response) => {
+        this.promotionTypes = response.data.map((type: { id: number, name: string }) => ({
+          id: type.id,
+          name: type.name
+        }));
+      },
+      error: (error) => {
+        console.error('Error fetching promotion types:', error);
+      }
+    });
   }
 
   showAddProductDialog() {
     this.displayAddProductDialog = true;
-  }
-
-  showPromotionDialog() {
-    this.displayPromotionDialog = true;
   }
 
   showEditProductDialog(product: Product) {
@@ -175,6 +211,41 @@ export class VendorDashboardComponent implements OnInit {
     });
     this.imagePreview = product.images && product.images.length > 0 ? product.images[0].image_data : null;
     this.displayEditProductDialog = true;
+  }
+
+  showAddPromotionDialog() {
+    if (this.selectedProducts.length === 0) {
+      this.messageService.add({severity: 'warn', summary: 'คำเตือน', detail: 'กรุณาเลือกสินค้าที่ต้องการเพิ่มโปรโมชั่นอย่างน้อยหนึ่งรายการ', life: 3000});
+      return;
+    }
+    this.displayAddPromotionDialog = true;
+  }
+
+  showEditPromotionDialog(product: Product) {
+    if (product?.promotion) {
+        const promotionType = this.promotionTypes.find(type => type.id === product.promotion?.promotion_type_id) ?? null;
+        
+        this.editPromotionForm.patchValue({
+            promotion_type_id: promotionType,
+            discount_value: product.promotion?.discount_value,
+            start_date: product.promotion?.start_date,
+            end_date: product.promotion?.end_date,
+            min_quantity: product.promotion?.min_quantity,
+            min_price: product.promotion?.min_price,
+            description: product.promotion?.description
+        });
+        
+        this.selectedProducts = [product];  // Ensure selectedProduct is set
+        this.displayEditPromotionDialog = true;
+    } else {
+        this.messageService.add({ severity: 'warn', summary: 'คำเตือน', detail: 'สินค้านี้ไม่มีโปรโมชั่นให้แก้ไข', life: 3000 });
+    }
+  }
+
+
+
+  getSeverity(product: Product) {
+    return product.promotion ? 'info' : 'success';
   }
 
   onFileChange(event: any) {
@@ -196,10 +267,6 @@ export class VendorDashboardComponent implements OnInit {
     }
   }
 
-  getSeverity(product: Product) {
-    return product.promotion ? 'info' : 'success';
-  }
-
   onAddProduct() {
     if (this.addProductForm.valid) {
       const formData = new FormData();
@@ -212,7 +279,7 @@ export class VendorDashboardComponent implements OnInit {
       if (this.vendor_id) {
         formData.append('vendor_id', this.vendor_id);
       } else {
-        console.error('Vendor ID is null');
+        this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'Vendor ID เป็นค่าว่าง', life: 3000});
         return;
       }
 
@@ -222,18 +289,18 @@ export class VendorDashboardComponent implements OnInit {
 
       this.productService.addProduct(formData).subscribe({
         next: (newProduct) => {
-          console.log('Product added successfully:', newProduct);
           this.refreshProductList();
           this.displayAddProductDialog = false;
           this.resetForm(this.addProductForm);
           this.clearFileSelection('add');
+          this.messageService.add({severity: 'success', summary: 'สำเร็จ', detail: 'เพิ่มสินค้าสำเร็จ', life: 3000});
         },
         error: (error) => {
           console.error('Error adding product:', error);
+          this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'เกิดข้อผิดพลาดในการเพิ่มสินค้า', life: 3000});
         }
       });
     } else {
-      console.error('Form is invalid', this.addProductForm.errors);
       this.logFormErrors(this.addProductForm);
     }
   }
@@ -255,21 +322,115 @@ export class VendorDashboardComponent implements OnInit {
 
       this.productService.editProduct(this.editingProduct.id, formData).subscribe({
         next: (updatedProduct) => {
-          console.log('Product updated successfully:', updatedProduct);
           this.refreshProductList();
           this.displayEditProductDialog = false;
           this.deleteImageFlag = false;
           this.resetForm(this.editProductForm);
           this.clearFileSelection('edit');
+          this.messageService.add({severity: 'success', summary: 'สำเร็จ', detail: 'แก้ไขสินค้าสำเร็จ', life: 3000});
         },
         error: (error) => {
           this.deleteImageFlag = false;
           console.error('Error updating product:', error);
+          this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'เกิดข้อผิดพลาดในการแก้ไขสินค้า', life: 3000});
         }
       });
     } else {
-      console.error('Form is invalid or editingProduct is null', this.editProductForm.errors);
       this.logFormErrors(this.editProductForm);
+    }
+  }
+
+  onAddPromotion() {
+    if (this.addPromotionForm.valid) {
+      const promotionData = {
+        ...this.addPromotionForm.value,
+        promotion_type_id: this.addPromotionForm.value.promotion_type_id.id // Extracting only the id
+      };
+      this.selectedProducts.forEach(product => {
+        const promotion: Promotion = {
+          ...promotionData,
+          product_id: product.id
+        };
+        this.promotionService.addPromotion(promotion).subscribe({
+          next: () => {
+            this.refreshProductList();
+            this.messageService.add({severity: 'success', summary: 'สำเร็จ', detail: 'เพิ่มโปรโมชั่นสำเร็จ', life: 3000});
+          },
+          error: (error) => {
+            console.error('Error adding promotion:', error);
+            this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'เกิดข้อผิดพลาดในการเพิ่มโปรโมชั่น', life: 3000});
+          }
+        });
+      });
+      this.displayAddPromotionDialog = false;
+      this.addPromotionForm.reset();
+    }
+  }
+
+  onEditPromotion() {
+    if (this.editPromotionForm.valid) {
+        const promotionType = this.editPromotionForm.value.promotion_type_id;
+        
+        if (!promotionType || !promotionType.id) {
+            this.messageService.add({ severity: 'error', summary: 'ข้อผิดพลาด', detail: 'ไม่สามารถอ่านค่า ID ของประเภทโปรโมชั่นได้', life: 3000 });
+            return;
+        }
+
+        const promotionData = { 
+            ...this.editPromotionForm.value, 
+            promotion_type_id: promotionType.id 
+        };
+        const selectedProduct = this.selectedProducts[0];
+
+        if (!selectedProduct || !selectedProduct.promotion) {
+            this.messageService.add({ severity: 'error', summary: 'ข้อผิดพลาด', detail: 'ไม่พบโปรโมชั่นสำหรับสินค้านี้', life: 3000 });
+            return;
+        }
+
+        const promotion: Promotion = {
+            ...promotionData,
+            product_id: selectedProduct.id,
+            id: selectedProduct.promotion.id
+        };
+
+        this.promotionService.updatePromotion(promotion).subscribe({
+            next: () => {
+                this.loadProducts();
+                this.messageService.add({ severity: 'success', summary: 'สำเร็จ', detail: 'แก้ไขโปรโมชั่นสำเร็จ', life: 3000 });
+            },
+            error: (error) => {
+                console.error('Error updating promotion:', error);
+                this.messageService.add({ severity: 'error', summary: 'ข้อผิดพลาด', detail: 'เกิดข้อผิดพลาดในการแก้ไขโปรโมชั่น', life: 3000 });
+            }
+        });
+        this.displayEditPromotionDialog = false;
+    } else {
+        this.messageService.add({ severity: 'warn', summary: 'คำเตือน', detail: 'กรุณากรอกข้อมูลให้ครบถ้วน', life: 3000 });
+    }
+  }
+
+  onDeletePromotion(product: Product) {
+    if (product.promotion) {
+      this.confirmationService.confirm({
+        message: 'คุณยืนยันที่จะลบโปรโมชั่นนี้ใช่หรือไม่?',
+        accept: () => {
+          const promotionId = product.promotion ? product.promotion.id : null;
+          if (promotionId !== null) {
+            this.promotionService.deletePromotion(promotionId).subscribe({
+              next: () => {
+                this.loadProducts();
+                this.messageService.add({severity: 'success', summary: 'สำเร็จ', detail: 'ลบโปรโมชั่นสำเร็จ', life: 3000});
+              },
+              error: (error) => {
+                console.error('Error deleting promotion:', error);
+                this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'เกิดข้อผิดพลาดในการลบโปรโมชั่น', life: 3000});
+              }
+            });
+          }
+        }
+      });
+    } else {
+      this.messageService.add({severity: 'warn', summary: 'คำเตือน', detail: 'สินค้านี้ไม่มีโปรโมชั่นให้ลบ', life: 3000});
     }
   }
 
@@ -280,6 +441,18 @@ export class VendorDashboardComponent implements OnInit {
         console.error(`Key control: ${key}, Errors: `, controlErrors);
       }
     });
+  }
+
+  updatePaginatedProducts() {
+    const startIndex = this.first;
+    const endIndex = this.first + this.rows;
+    this.paginatedProducts = this.products.slice(startIndex, endIndex);
+  }
+
+  onPageChange(event: any) {
+    this.first = event.first;
+    this.rows = event.rows;
+    this.updatePaginatedProducts();
   }
 
   closeAddProductDialog() {
@@ -294,8 +467,14 @@ export class VendorDashboardComponent implements OnInit {
     this.clearFileSelection('edit');
   }
 
-  closePromotionDialog() {
-    this.displayPromotionDialog = false;
+  closeAddPromotionDialog() {
+    this.displayAddPromotionDialog = false;
+    this.addPromotionForm.reset();
+  }
+
+  closeEditPromotionDialog() {
+    this.displayEditPromotionDialog = false;
+    this.editPromotionForm.reset();
   }
 
   clearFileSelection(dialogType: string) {
@@ -313,7 +492,7 @@ export class VendorDashboardComponent implements OnInit {
   setDeleteImageFlag() {
     this.deleteImageFlag = true;
   }
-  
+
   resetForm(form: FormGroup) {
     form.reset();
     Object.keys(form.controls).forEach(key => {
@@ -325,7 +504,7 @@ export class VendorDashboardComponent implements OnInit {
 
   confirmToDelete(productId: number): void {
     this.confirmationService.confirm({
-      message: 'คุณยืนยันที่จะลบสินค้าใช่หริอไม่?',
+      message: 'คุณยืนยันที่จะลบสินค้าใช่หรือไม่?',
       accept: () => this.deleteProduct(productId)
     });
   }
@@ -334,23 +513,26 @@ export class VendorDashboardComponent implements OnInit {
     this.productService.deleteProduct(productId).pipe(
       finalize(() => {
         this.refreshProductList();
-        // Ensure that the paginator resets to the first page if the last product on the current page is deleted
         if (this.paginatedProducts.length === 0 && this.first > 0) {
           this.first = Math.max(this.first - this.rows, 0);
         }
         this.updatePaginatedProducts();
       })
     ).subscribe({
-      next: () => console.log('Product successfully deleted'),
-      error: (err) => console.error('Error deleting product:', err)
+      next: () => {
+        this.messageService.add({severity: 'success', summary: 'สำเร็จ', detail: 'ลบสินค้าสำเร็จ', life: 3000});
+      },
+      error: (err) => {
+        console.error('Error deleting product:', err);
+        this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'เกิดข้อผิดพลาดในการลบสินค้า', life: 3000});
+      }
     });
   }
 
   refreshProductList() {
-    const vendorId = this.vendor_id ?? undefined; // Convert null to undefined
+    const vendorId = this.vendor_id ?? undefined;
     const role = this.authService.getRole();
     if (role === 'admin') {
-      // If the user is an admin, call the service without parameters
       this.productService.searchProducts().subscribe({
         next: (products) => {
           this.products = Array.isArray(products) ? products : [];
@@ -363,7 +545,6 @@ export class VendorDashboardComponent implements OnInit {
         }
       });
     } else if (vendorId) {
-      // If the user is not an admin and vendorId is available
       this.productService.searchProducts({ vendor_id: vendorId }).subscribe({
         next: (products) => {
           this.products = Array.isArray(products) ? products : [];
@@ -376,8 +557,24 @@ export class VendorDashboardComponent implements OnInit {
         }
       });
     } else {
-      console.error('Vendor ID is not available for refresh.');
+      this.messageService.add({severity: 'error', summary: 'ข้อผิดพลาด', detail: 'ไม่พบ Vendor ID ในการรีเฟรช', life: 3000});
+    }
+  }
+
+  onProductSelect(product: Product) {
+    const index = this.selectedProducts.indexOf(product);
+    if (index >= 0) {
+      this.selectedProducts.splice(index, 1);
+    } else {
+      this.selectedProducts.push(product);
+    }
+  }
+
+  toggleAllProducts() {
+    if (this.selectedProducts.length === this.paginatedProducts.length) {
+      this.selectedProducts = [];
+    } else {
+      this.selectedProducts = [...this.paginatedProducts];
     }
   }
 }
-

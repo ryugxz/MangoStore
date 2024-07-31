@@ -1,10 +1,8 @@
-<div class="col flex align-items-center justify-content-center text-center" style="height: 100vh;">
-  <div class="p-d-flex p-flex-column p-ai-center p-jc-center" style="height: 100%;">
-    <div class="p-mb-3">
-      <img *ngIf="qrCodeUrl" src="../../../assets/images/promtpay.png" alt="PromptPay QR Code" class="p-responsive-img">
-    </div>
-    <div>
-      <img *ngIf="qrCodeUrl" [src]="qrCodeUrl" alt="PromptPay QR Code" class="p-responsive-img w-7">
-    </div>
+<div class="qr-code-container">
+  <div *ngIf="qrCodeUrl">
+    <img [src]="qrCodeUrl" alt="PromptPay QR Code" class="p-responsive-img">
+  </div>
+  <div *ngIf="!qrCodeUrl">
+    <p>กำลังสร้าง QR Code...</p>
   </div>
 </div>

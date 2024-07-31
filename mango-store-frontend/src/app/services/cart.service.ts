@@ -1,17 +1,22 @@
-import { HttpClient, HttpParams, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
-import { Cart, CartItem } from '../model/cart';
+import { Cart, CartItem, Promotion } from '../model/cart';
 import { API_URLS } from './api-url';
 import { MessageService } from 'primeng/api';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CartService {
 
-  constructor(private http: HttpClient, private messageService: MessageService) {}
+  constructor(
+    private http: HttpClient, 
+    private messageService: MessageService, 
+    private router: Router
+  ) {}
 
   getCart(): Observable<Cart> {
     const token = localStorage.getItem('token');
@@ -21,6 +26,7 @@ export class CartService {
 
     return this.http.get<Cart>(API_URLS.get_cart, { headers })
       .pipe(
+        map(cart => this.applyPromotions(cart)),
         catchError((error) => {
           this.handleError('Failed to retrieve cart', 'Fetch error', error);
           return throwError(() => new Error('Failed to retrieve cart'));
@@ -28,7 +34,27 @@ export class CartService {
       );
   }
 
-  addItemToCart(productId: number, quantity: number): Observable<CartItem> {
+  getQrPayments(orderId: number): Observable<any> {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+    
+    // Adjust the path if necessary to use the existing checkout API
+    return this.http.get(`${API_URLS.checkout}/${orderId}/qr-payments`, { headers }).pipe(
+      tap(response => {
+        console.log('getQrPayments response:', response);  // Debug log
+      }),
+      catchError((error: HttpErrorResponse) => {
+        console.error('Error in getQrPayments:', error);  // Debug log
+        return throwError(() => new Error('Failed to fetch QR payments'));
+      })
+    );
+  }
+  
+  
+
+  addItemToCart(productId: number, quantity: number, shippingAddress: string): Observable<CartItem> {
     const token = localStorage.getItem('token');
     if (!token) {
       this.messageService.add({
@@ -44,7 +70,7 @@ export class CartService {
       'Authorization': `Bearer ${token}`
     });
   
-    const body = { product_id: productId, quantity: quantity };
+    const body = { product_id: productId, quantity: quantity, shipping_address: shippingAddress };
     
     return this.http.post<CartItem>(API_URLS.add_item_to_cart, body, { headers })
       .pipe(
@@ -96,6 +122,7 @@ export class CartService {
 
     return this.http.get<Cart[]>(API_URLS.get_all_carts_for_admin, { headers })
       .pipe(
+        map(carts => carts.map(cart => this.applyPromotions(cart))),
         catchError((error) => {
           this.handleError('Failed to retrieve all carts', 'Fetch error', error);
           return throwError(() => new Error('Failed to retrieve all carts'));
@@ -107,11 +134,11 @@ export class CartService {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${token}`,
-      'X-HTTP-Method-Override': 'PUT' // Append PUT method
+      'X-HTTP-Method-Override': 'PUT'
     });
   
     const url = `${API_URLS.update_cart_item}/${item.id}`;
-    const body = { ...item }; // Payload to send with the POST request
+    const body = { ...item };
     
     return this.http.post<void>(url, body, { headers })
       .pipe(
@@ -138,23 +165,47 @@ export class CartService {
     
     return this.http.post<any>(API_URLS.checkout, {}, { headers })
       .pipe(
-        tap(() => {
+        tap((response) => {
           this.messageService.add({
             severity: 'success',
             summary: 'Checkout Successful',
             detail: 'Your order has been successfully placed.',
             life: 5000
           });
+          this.router.navigate(['/checkout'], { state: { order: response.order } });
         }),
         catchError((error) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Checkout Failed',
+            detail: error.error.message || 'There was an error processing your order. Please try again.',
+            life: 5000
+          });
           this.handleError('Checkout failed', 'Checkout error', error);
           return throwError(() => new Error('Checkout failed'));
         })
       );
   }
 
+  private applyPromotions(cart: Cart): Cart {
+    cart.items = cart.items.map(item => {
+      if (item.product && item.product.promotion) {
+        const promotion = item.product.promotion;
+        const formattedPromotion: Promotion = {
+          ...promotion,
+          start_date: new Date(promotion.start_date).toISOString(),
+          end_date: new Date(promotion.end_date).toISOString(),
+          promotion_type: (promotion as any).promotion_type
+        };
+        item.promotion = formattedPromotion;
+      }
+      return item;
+    });
+    return cart;
+  }
+
   private handleError(detail: string, summary: string, error: HttpErrorResponse): void {
-    console.error('Error:', error); // Logging the error to the console for debugging
+    console.error('Error:', error);
     this.messageService.add({
       severity: 'error',
       summary: summary,

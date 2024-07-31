@@ -1,3 +1,5 @@
+<p-messages></p-messages>
+
 <p-fieldset legend="Products" class="p-3">
   <p-confirmDialog header="ยืนยันการลบสินค้า" icon="pi pi-exclamation-triangle" />
   <div class="w-full flex justify-content-end">
@@ -5,7 +7,7 @@
       <p-button icon="pi pi-cart-plus" class="white-space-nowrap mr-4" severity="success" label="เพิ่มสินค้า" (click)="showAddProductDialog()"></p-button>
     </div>
     <div>
-      <p-button icon="pi pi-star" class="white-space-nowrap mr-4" severity="help" label="จัดโปรโมชั่น" (click)="showPromotionDialog()"></p-button>
+      <p-button icon="pi pi-star" class="white-space-nowrap mr-4" severity="help" label="จัดโปรโมชั่น" (click)="showAddPromotionDialog()"></p-button>
     </div>
   </div>
   <p-divider />
@@ -14,6 +16,9 @@
       <div class="grid grid-nogutter">
         <div class="col-12" *ngFor="let item of paginatedProducts; let first = first" class="col-12">
           <div class="flex flex-column sm:flex-row sm:align-items-center p-4 gap-3" [ngClass]="{ 'border-top-1 surface-border': !first }">
+            <div>
+              <p-checkbox [binary]="true" [(ngModel)]="item.selected" (onChange)="onProductSelect(item)"></p-checkbox>
+            </div>
             <div class="md:w-10rem relative product-container">
               <p-image 
                    [src]="item.images && item.images[0]?.image_data || '../../assets/images/no-image.png'"
@@ -21,33 +26,34 @@
                    class="block mx-auto border-round w-full"
                    alt="Image"
                    width="150">
-                       <ng-template pTemplate="indicator">
-                           <i class="pi pi-check"></i>
-                       </ng-template>
-               </p-image>
-              <p-tag *ngIf="item.promotion" [value]="'Promotion: ' + item.promotion.discount_value + (item.promotion.discount_type === 'percentage' ? '%' : '$')"
-                     [severity]="getSeverity(item)" class="absolute" [style.left.px]="4" [style.top.px]="4"></p-tag>
+                   <ng-template pTemplate="indicator">
+                       <i class="pi pi-check"></i>
+                   </ng-template>
+              </p-image>
             </div>            
             <div class="flex flex-column md:flex-row justify-content-between md:align-items-center flex-1 gap-4">
               <div class="flex flex-row md:flex-column justify-content-between align-items-start gap-2">
                 <div>
+                  <p-tag *ngIf="item.promotion" 
+                         [value]="'โปรโมชั่น: ' + item.promotion.discount_value + (item.promotion.promotion_type_id === 1 ? '%' : '฿')"
+                         [severity]="getSeverity(item)" 
+                         [style.left.px]="4" 
+                         [style.top.px]="4">
+                  </p-tag>
                   <div class="text-lg font-medium text-900 mt-2">{{ item.name }}</div>
                   <div class="text-sm text-secondary mt-2">{{ item.description }}</div>
                 </div>
-                <div class="surface-100 p-1" style="border-radius: 30px">
-                  <div class="surface-0 flex align-items-center gap-2 justify-content-center py-1 px-2" style="border-radius: 30px; box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 1px 2px 0px rgba(0, 0, 0, 0.06)">
-                    <span class="text-900 font-medium text-sm">{{ item.promotion ? item.promotion.discount_value + (item.promotion.discount_type === 'percentage' ? '%' : '$') : '' }}</span>
-                    <i class="pi pi-star-fill text-yellow-500"></i>
-                  </div>
-                </div>
               </div>
-              <div class="flex flex-column md:align-items-end gap-5">
-                <span class="text-xl font-semibold text-900">{{ item.price + ' บาท'}}</span>
+              <div class="flex flex-column gap-2">
                 <div class="flex flex-row gap-2">
-                  <p-button icon="pi pi-pencil" class="flex-auto md:flex-initial white-space-nowrap" label="แก้ไขข้อมูล" (onClick)="showEditProductDialog(item)"></p-button>
-                  <p-button icon="pi pi-trash" class="flex-auto md:flex-initial white-space-nowrap" severity="danger" label="ลบสินค้า" (onClick)="confirmToDelete(item.id)"></p-button>
-                </div>                             
-              </div>
+                  <p-button icon="pi pi-pencil" label="แก้ไขข้อมูล" (onClick)="showEditProductDialog(item)" [style]="{ width: '12rem', 'margin-right': '0.5rem' }"></p-button>
+                  <p-button icon="pi pi-trash" severity="danger" label="ลบสินค้า" (onClick)="confirmToDelete(item.id)" [style]="{ width: '12rem' }"></p-button>
+                </div>
+                <div class="flex flex-row gap-2" *ngIf="item.promotion">
+                  <p-button icon="pi pi-tag" severity="info" label="แก้ไขโปรโมชั่น" (onClick)="showEditPromotionDialog(item)" [style]="{ width: '12rem', 'margin-right': '0.5rem' }"></p-button>
+                  <p-button icon="pi pi-times" severity="danger" label="ลบโปรโมชั่น" (onClick)="onDeletePromotion(item)" [style]="{ width: '12rem' }"></p-button>
+                </div>
+              </div>                                      
             </div>
           </div>
         </div>
@@ -62,6 +68,7 @@
       [totalRecords]="products.length" 
       [rowsPerPageOptions]="[5, 10, 15, 20]" />
 </p-fieldset>
+
 
 <p-dialog header="เพิ่มสินค้า" [(visible)]="displayAddProductDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeAddProductDialog()">
   <form [formGroup]="addProductForm" (ngSubmit)="onAddProduct()" class="p-2">
@@ -92,7 +99,7 @@
       </div>
       <div class="p-field">
         <div>
-          <label for="is_available" class="text-xs	">การมองเห็นสินค้า</label>
+          <label for="is_available" class="text-xs">การมองเห็นสินค้า</label>
         </div>
         <div class="pt-2">
           <p-inputSwitch id="is_available" formControlName="is_available"></p-inputSwitch>
@@ -125,7 +132,6 @@
     </p-footer>    
   </form>
 </p-dialog>
-
 
 <p-dialog header="แก้ไขข้อมูลสินค้า" [(visible)]="displayEditProductDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeEditProductDialog()">
   <form [formGroup]="editProductForm" (ngSubmit)="onEditProduct()">
@@ -191,7 +197,119 @@
   </form>
 </p-dialog>
 
+<p-dialog header="เพิ่มโปรโมชั่น" [(visible)]="displayAddPromotionDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeAddPromotionDialog()">
+  <form [formGroup]="addPromotionForm" (ngSubmit)="onAddPromotion()" class="p-2">
+    <div class="p-fluid">
+      <div class="p-field">
+        <p-floatLabel>
+          <p-dropdown 
+              [options]="promotionTypes" 
+              optionLabel="name" 
+              formControlName="promotion_type_id" 
+              placeholder="เลือกประเภทโปรโมชั่น">
+          </p-dropdown>
+          <label for="promotionType">ประเภทโปรโมชั่น</label>
+      </p-floatLabel>
+      
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="discountValue" formControlName="discount_value" mode="decimal" [minFractionDigits]="0" [maxFractionDigits]="2"></p-inputNumber>
+          <label for="discountValue">มูลค่าส่วนลด หรือ จำนวนที่ต้องการลด %</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <input pInputText formControlName="start_date" id="startDate" type="date" />
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <input pInputText formControlName="end_date" id="endDate" type="date" />
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="minQuantity" formControlName="min_quantity" mode="decimal" [minFractionDigits]="0"></p-inputNumber>
+          <label for="minQuantity">จำนวนขั้นต่ำ</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="minPrice" formControlName="min_price" mode="decimal" prefix="฿" [minFractionDigits]="2"></p-inputNumber>
+          <label for="minPrice">ราคาขั้นต่ำ</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <textarea rows="5" cols="30" id="description" pInputTextarea formControlName="description"></textarea>
+          <label for="description">คำอธิบาย</label>
+        </p-floatLabel>
+      </div>
+    </div>
+    <p-footer>
+      <div class="button-group">
+        <p-button label="เพิ่มโปรโมชั่น" icon="pi pi-check" type="submit" class="ui-button-primary p-1"></p-button>
+        <p-button label="ยกเลิก" icon="pi pi-times" (click)="displayAddPromotionDialog=false" class="ui-button-secondary p-3" severity="danger"></p-button>
+      </div>
+    </p-footer>
+  </form>
+</p-dialog>
 
-<p-dialog header="จัดโปรโมชั่นสินค้า" [(visible)]="displayPromotionDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeEditProductDialog()">
-  <app-promotion-page></app-promotion-page>
+<p-dialog header="แก้ไขโปรโมชั่น" [(visible)]="displayEditPromotionDialog" [modal]="true" [closable]="true" [style]="{width: '50vw'}" (onHide)="closeEditPromotionDialog()">
+  <form [formGroup]="editPromotionForm" (ngSubmit)="onEditPromotion()" class="p-2">
+    <div class="p-fluid">
+      <div class="p-field">
+        <p-floatLabel>
+          <p-dropdown 
+            [options]="promotionTypes" 
+            optionLabel="name" 
+            formControlName="promotion_type_id" 
+            placeholder="เลือกประเภทโปรโมชั่น">
+          </p-dropdown>
+          <label for="promotionType">ประเภทโปรโมชั่น</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="discountValue" formControlName="discount_value" mode="decimal" [minFractionDigits]="0" [maxFractionDigits]="2"></p-inputNumber>
+          <label for="discountValue">มูลค่าส่วนลด หรือ จำนวนที่ต้องการลด %</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <input pInputText formControlName="start_date" id="startDate" type="date" />
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <input pInputText formControlName="end_date" id="endDate" type="date" />
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="minQuantity" formControlName="min_quantity" mode="decimal" [minFractionDigits]="0"></p-inputNumber>
+          <label for="minQuantity">จำนวนขั้นต่ำ</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <p-inputNumber inputId="minPrice" formControlName="min_price" mode="decimal" prefix="฿" [minFractionDigits]="2"></p-inputNumber>
+          <label for="minPrice">ราคาขั้นต่ำ</label>
+        </p-floatLabel>
+      </div>
+      <div class="p-field">
+        <p-floatLabel>
+          <textarea rows="5" cols="30" id="description" pInputTextarea formControlName="description"></textarea>
+          <label for="description">คำอธิบาย</label>
+        </p-floatLabel>
+      </div>
+    </div>
+    <p-footer>
+      <div class="button-group">
+        <p-button label="แก้ไขโปรโมชั่น" icon="pi pi-check" type="submit" class="ui-button-primary p-1"></p-button>
+        <p-button label="ยกเลิก" icon="pi pi-times" (click)="displayEditPromotionDialog=false" class="ui-button-secondary p-3" severity="danger"></p-button>
+      </div>
+    </p-footer>
+  </form>
 </p-dialog>

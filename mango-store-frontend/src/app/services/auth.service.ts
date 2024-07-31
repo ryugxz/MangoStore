@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { API_URLS } from './api-url'; 
-import { UserRegister,UserProfile } from '../model/user.model';
+import { UserRegister, UserProfile, VendorDetail } from '../model/user.model';
 import { MessageService } from 'primeng/api';
 import * as CryptoJS from 'crypto-js';
 
@@ -20,7 +20,23 @@ export interface UserLoginResponse {
     created_at: string;
     update_at: string;
   };
-  user_profile:UserProfile;
+  user_profile: UserProfile;
+}
+
+export interface UserInfoResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: {
+    id: number;
+    username: string;
+    role: string;
+    email?: string;
+    created_at: string;
+    update_at: string;
+  };
+  profile: UserProfile;
+  vendorDetail?: VendorDetail;
 }
 
 @Injectable({
@@ -59,11 +75,23 @@ export class AuthService {
       );
   }
 
+  me(): Observable<UserInfoResponse | undefined> {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return of(undefined);
+    }   
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+    return this.http.post<UserInfoResponse>(API_URLS.me, {}, { headers });  // Correctly set headers as options
+  }
+
   private handleAuthentication(response: UserLoginResponse): void {
     this.storeCredentialsInLocalStorage('token', response.access_token);
     this.storeCredentialsInLocalStorage('user_id', response.user.id.toString());
     this.storeCredentialsInLocalStorage('first_name', response.user_profile.firstname);
     this.storeCredentialsInLocalStorage('last_name', response.user_profile.lastname);
+    this.storeCredentialsInLocalStorage('address', response.user_profile.address);
     const encryptedRole = this.encrypt(response.user.role.toLowerCase());
     this.storeCredentialsInLocalStorage('role', encryptedRole);
 
@@ -142,6 +170,68 @@ export class AuthService {
   isLoggedIn(): boolean {
     return !!this.token;
   }
+
+  updateProfile(userProfile: UserProfile, userId: number): Observable<UserProfile> {
+    const token = this.getFromLocalStorage('token');
+    console.log('Token retrieved:', token);
+  
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'X-HTTP-Method-Override': 'PUT'  // This indicates that the method is treated as PUT
+    });
+  
+    const body = {
+      firstname: userProfile.firstname,
+      lastname: userProfile.lastname,
+      email: userProfile.email,
+      phone: userProfile.phone,
+      address: userProfile.address
+    };
+  
+    const url = `${API_URLS.update_user_profile}/${userId}`;
+    console.log('Update URL:', url);
+    console.log('Request body:', body);
+  
+    return this.http.post<UserProfile>(url, body, { headers })
+      .pipe(
+        tap(() => {
+          console.log('success update product');
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Profile Updated',
+            detail: 'The profile has been successfully updated.',
+            life: 5000
+          });
+        }),
+        catchError(error => {
+          console.error('Error in updateProfile:', error);
+          return this.handleError(error, 'Update Profile');
+        })
+      );
+  }
+  
+  updateVendorDetail(vendorDetail: VendorDetail, userId: number): Observable<VendorDetail> {
+    const token = this.getFromLocalStorage('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'X-HTTP-Method-Override': 'PUT'  // This indicates that the method is treated as PUT
+    });
+  
+    const body = {
+      store_name: vendorDetail.store_name,
+      bank_name: vendorDetail.bank_name,
+      promptpay_number: vendorDetail.promptpay_number,
+      additional_qr_info: vendorDetail.additional_qr_info
+    };
+  
+    const url = `${API_URLS.update_vendor_detail}/${userId}`;
+  
+    return this.http.post<VendorDetail>(url, body, { headers })
+      .pipe(
+        catchError(error => this.handleError(error, 'Update Vendor Detail'))
+      );
+  }
+  
 
   private encrypt(text: string): string {
     return CryptoJS.AES.encrypt(text, this.secretKey).toString();

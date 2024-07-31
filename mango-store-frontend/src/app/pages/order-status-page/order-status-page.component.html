@@ -1,0 +1,72 @@
+<div class="p-grid">
+  <div class="p-col-12">
+    <h2>Order Status Management</h2>
+    <p-table [value]="orders" class="p-table">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Order ID</th>
+          <th>User ID</th>
+          <th>Total Price</th>
+          <th>Status</th>
+          <th>Payment Slip</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-order>
+        <tr>
+          <td>{{ order.id }}</td>
+          <td>{{ order.user_id }}</td>
+          <td>{{ order.total_price | currency: 'THB':'symbol':'1.2-2' }}</td>
+          <td>
+            <p-dropdown 
+              [options]="statuses" 
+              [(ngModel)]="order.status" 
+              (onChange)="updateStatus(order)" 
+              *ngIf="userRole !== 'customer'">
+            </p-dropdown>
+            <span *ngIf="userRole === 'customer'">{{ order.status }}</span>
+          </td>
+          <td>
+            <button pButton 
+              label="View Slip" 
+              icon="pi pi-eye" 
+              (click)="viewSlip(order)" 
+              *ngIf="order.payment_slip">
+            </button>
+            <span *ngIf="!order.payment_slip">No Slip</span>
+          </td>
+          <td>
+            <button pButton 
+              label="Cancel" 
+              icon="pi pi-times" 
+              class="p-button-danger" 
+              (click)="deleteOrder(order)" 
+              *ngIf="userRole !== 'customer'">
+            </button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <p-dialog 
+    header="Payment Slip" 
+    [(visible)]="displayDialog" 
+    [modal]="true" 
+    [closable]="false" 
+    [dismissableMask]="true">
+    <ng-container *ngIf="selectedOrder">
+      <img 
+        *ngIf="selectedOrder.payment_slip" 
+        [src]="'data:image/png;base64,' + selectedOrder.payment_slip" 
+        alt="Payment Slip" 
+        class="payment-slip">
+    </ng-container>
+    <button pButton 
+      label="Close" 
+      icon="pi pi-times" 
+      class="p-button-danger" 
+      (click)="closeDialog()">
+    </button>
+  </p-dialog>
+</div>
