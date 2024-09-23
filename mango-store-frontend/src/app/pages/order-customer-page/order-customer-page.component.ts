@@ -54,6 +54,8 @@ export class OrderCustomerPageComponent implements OnInit {
           this.paginatedOrders = this.orders.slice(0, this.rows);
           this.cdr.markForCheck();
           this.loadingService.hide();
+          console.log(orders);
+          
         },
         error: (error) => {
           console.error('Error fetching orders for user', error);
@@ -83,6 +85,23 @@ export class OrderCustomerPageComponent implements OnInit {
         return 'danger';
       default:
         return 'info';
+    }
+  }
+
+  translateOrderStatus(status: string): string {
+    switch (status) {
+      case 'pending':
+        return 'รอดำเนินการ';
+      case 'paid':
+        return 'ชำระเงินแล้ว';
+      case 'shipped':
+        return 'จัดส่งแล้ว';
+      case 'delivered':
+        return 'ส่งถึงแล้ว';
+      case 'cancelled':
+        return 'ยกเลิกแล้ว';
+      default:
+        return 'สถานะไม่ถูกต้อง';
     }
   }
 
